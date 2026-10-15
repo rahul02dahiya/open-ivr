@@ -9,16 +9,19 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from openivr.__main__ import main
 from openivr.builder.server import create_app, get_auth
-from openivr.media import (
+from openivr.ari.media import (
     AUDIO_SUFFIXES,
-    CONVERTIBLE_SUFFIXES,
-    TARGET_SUFFIX,
     available_sounds,
     check_prompt_name,
+    list_sound_files,
+)
+from openivr.builder.conversion import (
+    CONVERTIBLE_SUFFIXES,
+    TARGET_SUFFIX,
     convert_audio,
     ffmpeg_binary,
-    list_sound_files,
     needs_conversion,
     snake_case_stem,
 )
@@ -129,8 +132,8 @@ def test_convert_audio_reports_broken_input(tmp_path: Path) -> None:
 
 
 def test_convert_audio_without_ffmpeg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("openivr.media.ffmpeg_binary", lambda: None)
-    monkeypatch.setattr("openivr.media.CONVERT_SCRIPT", tmp_path / "missing.sh")
+    monkeypatch.setattr("openivr.builder.conversion.ffmpeg_binary", lambda: None)
+    monkeypatch.setattr("openivr.builder.conversion.CONVERT_SCRIPT", tmp_path / "missing.sh")
     source = tmp_path / "clip.mp3"
     source.write_bytes(b"x")
     assert "ffmpeg" in convert_audio(source, "clip", tmp_path)
@@ -248,8 +251,6 @@ def test_delete_cannot_escape_the_sounds_directory(client: TestClient, project: 
 
 
 def test_sounds_cli_lists_prompts(project: Path, capsys: pytest.CaptureFixture) -> None:
-    from openivr.__main__ import main
-
     (project / "data" / "sounds" / "cli.wav").write_bytes(b"RIFF")
     assert main(["--root", str(project), "sounds"]) == 0
     assert "cli.wav" in capsys.readouterr().out

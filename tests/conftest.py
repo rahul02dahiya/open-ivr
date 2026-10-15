@@ -17,6 +17,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Imported after the bootstrap above so `openivr` resolves whether pytest runs
+# as `python -m pytest` or through the bare `pytest` console script.
+from openivr.ari.flow import Flow  # noqa: E402
+from openivr.config import load_config  # noqa: E402
+
 
 SAMPLE_FLOW: dict[str, Any] = {
     "version": 1,
@@ -75,8 +80,6 @@ def project(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def cfg(project: Path):
-    from openivr.config import load_config
-
     config = load_config(project)
     config.ari.password = "secret"  # type: ignore[attr-defined]
     return config
@@ -84,8 +87,6 @@ def cfg(project: Path):
 
 @pytest.fixture()
 def flow(cfg):
-    from openivr.flow import Flow
-
     return Flow.load(cfg.flow_path)
 
 

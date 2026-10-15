@@ -15,7 +15,7 @@ Environment=OPENIVR_ROOT={{OPENIVR_ROOT}}
 Environment=OPENIVR_LOG_LEVEL={{OPENIVR_LOG_LEVEL}}
 EnvironmentFile=-{{OPENIVR_ROOT}}/.env
 ExecStartPre={{OPENIVR_PYTHON}} -m openivr verify || /bin/true
-ExecStart={{OPENIVR_PYTHON}} -m openivr run
+ExecStart={{OPENIVR_PYTHON}} -m openivr.ari
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5

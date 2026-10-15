@@ -27,24 +27,27 @@ from typing import Any
 from urllib.parse import quote
 
 import anyio
+import uvicorn
 from fastapi import FastAPI, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ..config import Config, SmtpCfg, load_config, set_config_value
-from ..media import (
+from ..ari.media import (
     AUDIO_SUFFIXES,
-    CONVERTIBLE_SUFFIXES,
-    TARGET_SUFFIX,
     available_sounds,
     check_prompt_name,
+    list_sound_files,
+)
+from ..ari.notify import Notifier
+from .conversion import (
+    CONVERTIBLE_SUFFIXES,
+    TARGET_SUFFIX,
     convert_audio,
     ffmpeg_binary,
-    list_sound_files,
     needs_conversion,
 )
-from ..notify import Notifier
 from .auth import (
     LOGIN_PATH,
     MIN_PASSWORD_LENGTH,
@@ -1352,8 +1355,6 @@ def serve(
     standalone: bool | None = None,
 ) -> None:
     """Run the builder with uvicorn (blocking)."""
-    import uvicorn
-
     application = create_app(root)
     application.state.keep_open = keep_open
     if standalone is not None:

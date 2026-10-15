@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from openivr.builder.providers import catalog_public, countries, provider_by_id, providers
 from openivr.builder.publish import publish
@@ -467,8 +468,6 @@ def test_token_security_guard(app, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_guard_rejects_remote_writes_without_token_or_session(app) -> None:
     """The route-level guard is defence in depth behind the middleware."""
-    from starlette.requests import Request
-
     def remote_request() -> Request:
         scope = {
             "type": "http",

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import anyio
 
-from .config import SmtpCfg
+from ..config import SmtpCfg
 
 log = logging.getLogger(__name__)
 

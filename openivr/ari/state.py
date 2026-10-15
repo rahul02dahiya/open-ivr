@@ -19,13 +19,14 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import anyio
 from asyncari.model import Channel
 from asyncari.state import DTMFHandler, ToplevelChannelState
 
 from .cdr import CallRecord
-from .config import Config
+from ..config import Config
 from .context import RuntimeContext
 from .dtmf import DigitStream
 from .flow import Action, Flow, Menu
@@ -658,14 +659,10 @@ def _window_bounds(window: Any) -> tuple[str | None, str | None]:
 
 def _zone(timezone_name: str):
     try:
-        from zoneinfo import ZoneInfo
-
         return ZoneInfo(timezone_name or "UTC")
     except Exception as exc:  # noqa: BLE001 - tzdata may be missing
         log.warning("Unknown timezone %r (%s); using UTC", timezone_name, exc)
         try:
-            from zoneinfo import ZoneInfo
-
             return ZoneInfo("UTC")
         except Exception:  # noqa: BLE001
             return None

@@ -14,8 +14,8 @@ from typing import Any
 import anyio
 import pytest
 
-from openivr.originate import DIALED_ARG, is_dialed_leg
-from openivr.runner import Service
+from openivr.ari.originate import DIALED_ARG, is_dialed_leg
+from openivr.ari.service import Service
 
 pytestmark = pytest.mark.anyio
 

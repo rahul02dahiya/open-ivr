@@ -21,15 +21,17 @@ from openivr.builder.session import (
     DEFAULT_PERMISSIONS,
     VOICEMAIL_FORMATS,
     load_permissions,
+    save_endpoints,
+    save_extensions,
+    save_ivr,
     save_permissions,
     save_smtp,
+    save_trunk,
     validate_permissions,
 )
 
 
 def _seed(root: Path) -> None:
-    from openivr.builder.session import save_endpoints, save_extensions, save_trunk
-
     save_trunk(
         root,
         {
@@ -179,8 +181,6 @@ def test_fill_tokens_skips_comment_lines() -> None:
 def test_render_all_includes_voicemail_and_queues(project: Path) -> None:
     _seed(project)
     save_permissions(project, {**DEFAULT_PERMISSIONS, "voicemail_enabled": True})
-    from openivr.builder.session import save_extensions
-
     save_extensions(
         project,
         [
@@ -222,8 +222,6 @@ def test_publish_copies_to_a_custom_destination(project: Path) -> None:
 
 
 def _seed_ivr(root: Path) -> None:
-    from openivr.builder.session import save_ivr
-
     save_ivr(
         root,
         {

@@ -1,4 +1,4 @@
-.PHONY: help install builder deploy publish reload status logs service-start service-stop \
+.PHONY: help install ari builder deploy publish reload status logs service-start service-stop \
         service-restart service-enable service-disable verify config creds sounds \
         grant-permissions clean clean-data distclean test lint format venv check
 
@@ -24,6 +24,11 @@ install:       ## Full first-time system install (asks for sudo)
 
 grant-permissions: ## Re-grant asterisk group permissions (one-time, needs sudo)
 	@sudo bash system/install.sh --grant-permissions
+
+# ----------------------------------------------------------------------- ari
+
+ari:           ## Start the Asterisk ARI multitasking IVR app
+	@$(PYTHON) -m openivr.ari
 
 # ------------------------------------------------------------------- builder
 

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from openivr.__main__ import main
 from openivr.builder.auth import (
     DEFAULT_TTL,
     MIN_PASSWORD_LENGTH,
@@ -23,7 +24,7 @@ from openivr.builder.auth import (
     verify_password,
 )
 from openivr.builder.server import SESSION_COOKIE, create_app, get_auth
-from openivr.config import load_config, read_config_value
+from openivr.config import load_config, read_config_value, set_config_value
 
 
 @pytest.fixture()
@@ -98,8 +99,6 @@ def test_session_ttl_defaults_and_override(app, tmp_path: Path) -> None:
 
     cfg = load_config(tmp_path)
     cfg.builder.session_ttl = 900
-    from openivr.config import set_config_value
-
     set_config_value(tmp_path, "builder.session_ttl", 900)
     cfg2 = load_config(tmp_path)
     assert load_auth(tmp_path, cfg2, provision=False).session_ttl == 900
@@ -266,8 +265,6 @@ def test_save_credentials_requires_a_username(app, tmp_path: Path) -> None:
 
 
 def test_creds_command_resets_the_password(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
-    from openivr.__main__ import main
-
     assert main(["--root", str(tmp_path), "creds", "--username", "operator"]) == 0
     out = capsys.readouterr().out
     assert "operator" in out

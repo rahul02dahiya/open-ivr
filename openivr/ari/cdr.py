@@ -26,7 +26,7 @@ from typing import Any
 
 import anyio
 
-from .config import Config
+from ..config import Config
 
 log = logging.getLogger(__name__)
 

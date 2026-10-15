@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from openivr.voicemail import VoicemailBox, VoicemailResult, sanitise_mailbox
+from openivr.ari.voicemail import VoicemailBox, VoicemailResult, sanitise_mailbox
 
 pytestmark = pytest.mark.anyio
 

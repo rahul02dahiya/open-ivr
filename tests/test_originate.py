@@ -12,7 +12,7 @@ from typing import Any
 import anyio
 import pytest
 
-from openivr.originate import DIALED_ARG, originate_and_bridge
+from openivr.ari.originate import DIALED_ARG, originate_and_bridge
 
 pytestmark = pytest.mark.anyio
 

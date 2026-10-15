@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .cdr import CdrWriter
-from .config import Config
+from ..config import Config
 from .flow import Flow
 from .media import available_sounds
 from .notify import Notifier

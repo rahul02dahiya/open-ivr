@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 from conftest import SAMPLE_FLOW, write_flow
 
-from openivr.flow import ACTIONS, Flow, FlowError, menu_tree, validate
+from openivr.ari.flow import ACTIONS, Flow, FlowError, menu_tree, validate
 
 
 def test_load_sample_flow(cfg, flow: Flow) -> None:
@@ -234,10 +234,8 @@ def test_save_is_atomic(tmp_path: Path, flow: Flow) -> None:
 
 
 def test_validate_accepts_a_written_file(project: Path) -> None:
-    from openivr.flow import validate as validate_fn
-
     path = write_flow(project / "data" / "ivr_flow.json")
-    assert validate_fn(json.loads(path.read_text(encoding="utf-8"))) == []
+    assert validate(json.loads(path.read_text(encoding="utf-8"))) == []
 
 
 def test_prompts_excludes_full_media_uris() -> None:

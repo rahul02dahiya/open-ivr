@@ -1,8 +1,8 @@
 """ARI connection loop: connect, dispatch StasisStart into IVRState, reconnect.
 
-Kept deliberately small: the per-call logic lives in :mod:`openivr.state`,
-this module only owns the websocket, the reconnect/backoff policy, the health
-log and the "service down" e-mail alert.
+This module owns the websocket connection to Asterisk ARI, the reconnect/backoff
+policy, health reporting, and alert dispatching on connection failure. Each Stasis
+call event is handled concurrently as a multitasking call task.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from typing import Any
 import anyio
 import asyncari
 
-from .config import Config, load_config
+from ..config import Config, load_config
+from ..logging_setup import setup_logging
 from .context import RuntimeContext, build_context
 from .notify import ALERT_SUBJECT, RECOVERED_SUBJECT, Notifier
 from .originate import is_dialed_leg
@@ -22,13 +23,12 @@ from .state import IVRState
 
 log = logging.getLogger(__name__)
 
-
 #: how many consecutive failures before we e-mail "service down"
 ALERT_AFTER_FAILURES = 3
 
 
 class Service:
-    """Owns the ARI websocket for the lifetime of the process."""
+    """Owns the ARI websocket for the lifetime of the process and dispatches calls."""
 
     def __init__(self, cfg: Config, ctx: RuntimeContext | None = None) -> None:
         self.cfg = cfg
@@ -184,3 +184,15 @@ def build_service(cfg: Config, overrides: dict[str, Any] | None = None) -> Servi
     if overrides:
         cfg = load_config(cfg.root, overrides=overrides)
     return Service(cfg)
+
+
+def run_app(root: str | None = None) -> int:
+    """Run the ARI IVR application daemon."""
+    cfg = load_config(root, bootstrap=True)
+    log_inst = setup_logging(cfg)
+    log_inst.info("OpenIVR ARI Service starting (root=%s, app=%s)", cfg.root, cfg.app.stasis_app)
+    try:
+        anyio.run(Service(cfg).run)
+    except KeyboardInterrupt:
+        log_inst.info("OpenIVR ARI Service interrupted")
+    return 0

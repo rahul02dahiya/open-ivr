@@ -100,8 +100,6 @@ def test_ensure_dirs(project: Path) -> None:
 
 
 def test_require_ari_password(tmp_path: Path) -> None:
-    from openivr.config import ConfigError
-
     config = load_config(tmp_path)
     with pytest.raises(ConfigError):
         config.require_ari_password()
@@ -110,8 +108,6 @@ def test_require_ari_password(tmp_path: Path) -> None:
 
 
 def test_invalid_values_are_rejected(tmp_path: Path) -> None:
-    from openivr.config import ConfigError
-
     (tmp_path / "config.yaml").write_text("dial:\n  mode: carrier-pigeon\n", encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(tmp_path)
@@ -136,8 +132,6 @@ def test_smtp_roundtrip(tmp_path: Path) -> None:
 
 
 def test_broken_json_raises(tmp_path: Path) -> None:
-    from openivr.config import ConfigError
-
     (tmp_path / "system.json").write_text("{not json", encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(tmp_path)
@@ -145,18 +139,16 @@ def test_broken_json_raises(tmp_path: Path) -> None:
 
 def test_unreadable_system_json_explains_the_fix(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The installer runs under sudo; the CLI/builder run as the user."""
-    from pathlib import Path as _Path
-
     target = tmp_path / "system.json"
     target.write_text("{}", encoding="utf-8")
-    real_open = _Path.open
+    real_open = Path.open
 
     def deny(self, *args, **kwargs):
         if self == target:
             raise PermissionError(13, "Permission denied")
         return real_open(self, *args, **kwargs)
 
-    monkeypatch.setattr(_Path, "open", deny)
+    monkeypatch.setattr(Path, "open", deny)
     with pytest.raises(ConfigError) as excinfo:
         load_config(tmp_path)
     message = str(excinfo.value)

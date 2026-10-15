@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import logging
 import os
 import socket
 import sys
@@ -27,9 +28,34 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import Config, ConfigError, load_config
-from .flow import Flow, FlowError, menu_tree, validate
-from .media import available_sounds, list_sound_files
+import anyio
+import asyncari
+
+from . import __version__
+from .ari.flow import Flow, FlowError, menu_tree, validate
+from .ari.media import available_sounds, list_sound_files
+from .ari.notify import Notifier
+from .ari.originate import originate_simple
+from .ari.service import Service
+from .builder.auth import (
+    AuthError,
+    generate_password,
+    hash_password,
+    load_auth,
+    save_credentials,
+)
+from .builder.publish import publish
+from .builder.server import serve
+from .config import (
+    Config,
+    ConfigError,
+    bootstrap_config,
+    config_path,
+    load_config,
+    read_config_value,
+    set_config_value,
+)
+from .logging_setup import setup_logging
 
 DEFAULT_ROOT_ARG = Path(__file__).resolve().parent.parent
 
@@ -87,17 +113,10 @@ def ari_url(cfg: Config, path: str = "") -> str:
 
 
 def _log_setup_quiet(cfg: Config) -> None:
-    import logging
-
     logging.getLogger().addHandler(logging.NullHandler())
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    import anyio
-
-    from .logging_setup import setup_logging
-    from .runner import Service
-
     cfg = load_config(args.root, bootstrap=True)
     log = setup_logging(cfg)
     print(gradient_banner() if sys.stdout.isatty() else BANNER)
@@ -179,8 +198,6 @@ def cmd_verify(args: argparse.Namespace) -> int:
         )
     )
     if cfg.smtp.enabled:
-        from .notify import Notifier
-
         ok, detail = Notifier(cfg.smtp).test()
         checks.append(Check("smtp", ok, detail, fatal=False))
     else:
@@ -242,13 +259,6 @@ def cmd_config(args: argparse.Namespace) -> int:
     The installer uses ``config set`` (04-config-ari.sh, 08-database.sh) so secrets
     land in config.yaml without hand-editing YAML or losing comments.
     """
-    from .config import (
-        bootstrap_config,
-        config_path,
-        read_config_value,
-        set_config_value,
-    )
-
     root = Path(args.root) if args.root else Path(os.environ.get("OPENIVR_ROOT") or DEFAULT_ROOT_ARG)
     root = root.resolve()
 
@@ -313,8 +323,6 @@ def cmd_config(args: argparse.Namespace) -> int:
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
-    from .builder.publish import publish
-
     root = Path(args.root or os.environ.get("OPENIVR_ROOT") or DEFAULT_ROOT_ARG).resolve()
     dest = Path(args.dest).resolve() if args.dest else None
     result = publish(root, dest=dest, reload=not args.no_reload)
@@ -331,15 +339,6 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
 def cmd_creds(args: argparse.Namespace) -> int:
     """Reset the builder login: new password, printed exactly once."""
-    from .builder.auth import (
-        AuthError,
-        generate_password,
-        hash_password,
-        load_auth,
-        save_credentials,
-    )
-    from .config import config_path
-
     root = Path(args.root or os.environ.get("OPENIVR_ROOT") or DEFAULT_ROOT_ARG).resolve()
     cfg = load_config(root, bootstrap=True)
     auth = load_auth(cfg.root, cfg, provision=False)
@@ -380,8 +379,6 @@ def cmd_builder(args: argparse.Namespace) -> int:
             answer = ""
         if answer:
             company = answer
-            from .config import set_config_value
-
             set_config_value(root, "builder.company_name", company)
 
     print(f"openivr builder on http://{args.host}:{args.port} (config: {', '.join(cfg.sources)})")
@@ -390,8 +387,6 @@ def cmd_builder(args: argparse.Namespace) -> int:
         print("  standalone mode: no system.json found - Asterisk was never installed here")
         print("  everything in the builder works; only 'Deploy to Asterisk' is unavailable")
         print(f"  run 'sudo make install' in {root} to install the system side")
-    from .builder.server import serve
-
     serve(
         host=args.host,
         port=args.port,
@@ -403,19 +398,12 @@ def cmd_builder(args: argparse.Namespace) -> int:
 
 
 def cmd_originate(args: argparse.Namespace) -> int:
-    import anyio
-    import asyncari
-
-    from .logging_setup import setup_logging
-
     cfg = load_config(
         args.root, overrides={"ari": {"password": args.password}} if args.password else None
     )
     log = setup_logging(cfg)
 
     async def main() -> int:
-        from .originate import originate_simple
-
         async with asyncari.connect(
             base_url=cfg.ari.base_url,
             apps=[cfg.app.stasis_app],
@@ -488,8 +476,6 @@ def cmd_sounds(args: argparse.Namespace) -> int:
 
 
 def _version() -> str:
-    from . import __version__
-
     return __version__
 
 
@@ -498,8 +484,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", default=None, help="project root (default: package location)")
     sub = p.add_subparsers(dest="command")
 
-    run_p = sub.add_parser("run", help="start the IVR (default)")
+    run_p = sub.add_parser("run", help="start the ARI IVR service (default)")
     run_p.set_defaults(func=cmd_run)
+
+    ari_p = sub.add_parser("ari", help="start the Asterisk ARI multitasking IVR app")
+    ari_p.set_defaults(func=cmd_run)
 
     ver_p = sub.add_parser("verify", help="verify config/flow/sounds/ARI")
     ver_p.set_defaults(func=cmd_verify)

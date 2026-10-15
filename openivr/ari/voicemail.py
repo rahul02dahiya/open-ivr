@@ -19,7 +19,8 @@ from pathlib import Path
 
 import anyio
 
-from .config import Config
+from ..config import Config
+from .media import play_prompt
 from .spool import move_from_spool
 
 log = logging.getLogger(__name__)
@@ -120,8 +121,6 @@ class VoicemailBox:
         return result
 
     async def _play(self, channel, prompt: str) -> None:
-        from .media import play_prompt
-
         await play_prompt(channel, prompt, self.cfg)
 
     def _cleanup_spool(self, name: str, fmt: str) -> None:
