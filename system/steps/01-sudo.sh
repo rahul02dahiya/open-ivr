@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 00 - capture the sudo credential once, so every later step can use `sudo -n`
+# 01 - capture the sudo credential once, so every later step can use `sudo -n`
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 
 step "Capturing sudo credential"

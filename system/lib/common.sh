@@ -24,6 +24,30 @@ ASTERISK_SPOOL="${ASTERISK_SPOOL:-/var/spool/asterisk}"
 OPENIVR_USER="${OPENIVR_USER:-asterisk}"
 OPENIVR_GROUP="${OPENIVR_GROUP:-asterisk}"
 
+# asterisk lives in /usr/sbin, which may not be on an unprivileged
+# user's PATH - ensure /usr/sbin and /sbin are included.
+case ":${PATH}:" in
+  *:/usr/sbin:*) ;;
+  *) PATH="${PATH}:/usr/sbin:/sbin"; export PATH ;;
+esac
+
+# ------------------------------------------------- distro / package manager
+# Every step is its own process, so OS_ID/PKG have to be detected here (and
+# exported) instead of only in 02-requirements.sh - otherwise the steps that
+# install packages die on `PKG: unbound variable` under `set -u`.
+OS_ID="${OS_ID:-$(. /etc/os-release 2>/dev/null && printf '%s' "${ID:-unknown}")}"
+OS_VER="${OS_VER:-$(. /etc/os-release 2>/dev/null && printf '%s' "${VERSION_ID:-unknown}")}"
+export OS_ID OS_VER
+
+if [ -z "${PKG:-}" ]; then
+  case "${OS_ID}" in
+    ubuntu|debian) PKG=apt ;;
+    rhel|centos|rocky|almalinux|ol|fedora) PKG=dnf ;;
+    *) PKG=apt ;;
+  esac
+fi
+export PKG
+
 # Interpreter used for the openivr CLI (.venv when present, else system python3)
 if [ -z "${OPENIVR_PYTHON:-}" ]; then
   if [ -x "${OPENIVR_ROOT}/.venv/bin/python" ]; then
@@ -35,6 +59,9 @@ fi
 export OPENIVR_PYTHON
 
 mkdir -p "${STATE_DIR}"
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+  chown -R "${SUDO_USER}" "${STATE_DIR}" 2>/dev/null || true
+fi
 
 log()   { printf '%s\n' "${C_BLUE}==>${C_RESET} $*"; }
 ok()    { printf '%s\n' "${C_GREEN}  ok${C_RESET} $*"; }
@@ -115,7 +142,7 @@ PY
 
 # config_set <key> <value>
 # Writes a single value into config.yaml (mode 0600) - the YAML-aware way for
-# installer steps to store secrets (30-ari.sh, 60-database.sh, 80-smtp.sh).
+# installer steps to store secrets (04-config-ari.sh, 08-database.sh, 10-smtp.sh).
 config_set() {
   local key="$1" value="$2"
   if ! have "${OPENIVR_PYTHON}"; then
@@ -208,11 +235,14 @@ PY
 }
 
 asterisk_reload() {
-  if have asteriskctl; then
-    asteriskctl reload >/dev/null 2>&1 || true
+  if have asterisk; then
+    asterisk -rx "core reload" >/dev/null 2>&1 || true
   fi
 }
 
 asterisk_running() {
+  if have systemctl && systemctl is-active --quiet asterisk 2>/dev/null; then
+    return 0
+  fi
   pgrep -x asterisk >/dev/null 2>&1
 }

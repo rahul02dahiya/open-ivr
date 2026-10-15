@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# 40 - SIP trunk to the outside world
+# 06 - SIP trunk to the outside world (optional)
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 
 step "SIP trunk"
 
-log "skipping this step is fine for local testing with softphones"
+log "Skipping this step is normal for local testing with softphones"
 if [ "$(ask_yes_no "Do you have a SIP trunk / SIP account from a provider?" "n")" != "y" ]; then
-  info "no trunk configured - you can still test with local extensions (step 50)"
+  info "No trunk configured - you can configure this later in the builder or test with local extensions"
   write_step "trunk" '{"trunk": {"configured": false}}'
   return 0 2>/dev/null || exit 0
 fi
@@ -18,7 +18,7 @@ TRUNK_USER="$(ask "Username / account" "")"
 TRUNK_CONTEXT="$(ask "Incoming context (where inbound calls land)" "from-trunk")"
 
 if [ -z "${TRUNK_HOST}" ] || [ -z "${TRUNK_USER}" ]; then
-  warn "host and username are required - skipping trunk"
+  warn "Host and username are required - skipping trunk configuration"
   write_step "trunk" '{"trunk": {"configured": false}}'
   return 0 2>/dev/null || exit 0
 fi
@@ -34,7 +34,7 @@ fi
 mkdir -p "${ASTERISK_ETC}"
 backup_conf "${ASTERISK_ETC}/pjsip-trunk.conf"
 cat > "${ASTERISK_ETC}/pjsip-trunk.conf" <<EOF
-; managed by openivr system/steps/40-trunk.sh
+; managed by openivr system/steps/06-trunk.sh
 [${TRUNK_TYPE}:${TRUNK_NAME}]
 type = ${TRUNK_TYPE}
 endpoint = ${TRUNK_NAME}
@@ -61,5 +61,5 @@ write_step "trunk" "$(printf '{"trunk": {"configured": true, "type": "%s", "name
   "${TRUNK_TYPE}" "${TRUNK_NAME}" "${TRUNK_HOST}" "${TRUNK_USER}" "${TRUNK_CONTEXT}" \
   "$( [ "${TRUNK_AUTH}" = "1" ] && echo true || echo false)")"
 
-info "inbound: dialplan context ${TRUNK_CONTEXT} -> Stasis(openivr)"
-info "outbound: dial PJSIP/${TRUNK_NAME} from a flow 'dial' action"
+info "Inbound: dialplan context ${TRUNK_CONTEXT} -> Stasis(openivr)"
+info "Outbound: dial PJSIP/${TRUNK_NAME} from a flow 'dial' action"

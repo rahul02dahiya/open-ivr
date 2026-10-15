@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# 80 - SMTP for voicemail delivery + service-down alerts
+# 10 - SMTP for voicemail delivery and service alerts
 . "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 
-step "SMTP (voicemail mail + service alerts)"
+step "SMTP configuration (alerts and voicemail)"
 
-log "the plan makes SMTP mandatory so a dead IVR raises an e-mail alarm"
-info "you can also set it later in the builder (/smtp) or in data/smtp.json"
+log "SMTP is recommended for service-down alerts and voicemail delivery"
+info "You can configure this now or later in the builder (/smtp)"
 
-if [ "$(ask_yes_no "Configure an outgoing mail server now?" "y")" != "y" ]; then
-  warn "without SMTP the IVR cannot alert you when ARI goes down"
+if [ "$(ask_yes_no "Configure an outgoing mail server now?" "n")" != "y" ]; then
+  info "SMTP skipped - can be configured later in the builder"
   write_step "smtp" '{"smtp": {"enabled": false}}'
   return 0 2>/dev/null || exit 0
 fi
@@ -22,7 +22,7 @@ SMTP_TO="$(ask "Recipient(s) for alerts and voicemails (comma separated)" "${SMT
 STARTTLS="$(ask_yes_no "Use STARTTLS?" "y")"
 
 if [ -z "${SMTP_HOST}" ] || [ -z "${SMTP_TO}" ]; then
-  warn "host and recipient are required - SMTP left disabled"
+  warn "Host and recipient are required - SMTP left disabled"
   write_step "smtp" '{"smtp": {"enabled": false}}'
   return 0 2>/dev/null || exit 0
 fi
@@ -39,12 +39,12 @@ if python3 - "${SMTP_HOST}" "${SMTP_PORT}" <<'PY'
 import smtplib, sys
 host, port = sys.argv[1], int(sys.argv[2])
 try:
-    with smtplib.SMTP(host, port, timeout=10):
+    with smtplib.SMTP(host, port, timeout=5):
         pass
 except Exception as exc:
     print(f"  !! cannot reach {host}:{port}: {exc}")
     raise SystemExit(1)
 PY
 then ok "SMTP host reachable"
-else warn "SMTP host unreachable - check the settings later with the builder"
+else warn "SMTP host unreachable - check the settings later in the builder"
 fi

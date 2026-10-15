@@ -5,7 +5,7 @@
 printf '\n%s\n' "${C_BOLD}openivr status${C_RESET}"
 
 if asterisk_running; then
-  ok "asterisk: $(asteriskctl version 2>/dev/null | head -1)"
+  ok "asterisk: $(asterisk -V 2>/dev/null | head -1)"
 else
   err "asterisk: not running"
 fi
@@ -26,9 +26,9 @@ else
   warn "system.json missing - run: sudo ./system/install.sh"
 fi
 
-if systemctl is-active --quiet open-ivr 2>/dev/null; then
+if systemctl is-active --quiet openivr 2>/dev/null; then
   ok "openivr.service: $(systemctl is-active openivr)"
-  systemctl --no-pager --lines=5 status open-ivr 2>/dev/null | sed 's/^/     /' || true
+  systemctl --no-pager --lines=5 status openivr 2>/dev/null | sed 's/^/     /' || true
 else
   info "openivr.service: not running"
 fi

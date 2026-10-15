@@ -23,6 +23,13 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 CONVERTIBLE_SUFFIXES = {".mp3", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".wma", ".aiff"}
 #: Formats Asterisk reads without any conversion.
 NATIVE_SUFFIXES = AUDIO_SUFFIXES - CONVERTIBLE_SUFFIXES
+
+
+def snake_case_stem(name: str) -> str:
+    stem = Path(name).stem.lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", stem).strip("_")
+    return slug or "prompt"
+
 #: Result of a conversion - 8 kHz mono signed 16-bit is what Asterisk wants.
 TARGET_SUFFIX = ".wav"
 FFMPEG_TIMEOUT = 60
@@ -156,7 +163,7 @@ def list_sound_files(sounds_dir: str | Path) -> list[dict[str, object]]:
             continue
         out.append(
             {
-                "name": entry.stem if entry.suffix.lower() == ".wav" else entry.name,
+                "name": entry.name,
                 "file": entry.name,
                 "relpath": str(entry.relative_to(directory)),
                 "suffix": entry.suffix.lower().lstrip("."),

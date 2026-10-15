@@ -14,7 +14,7 @@
 #   system/ scripts) -> data/smtp.json (written by builder) -> OPENIVR_* env
 #
 # Anything the installer collected (SIP trunk, DB, ports, SMTP) is also kept
-# in ./system.json; system/ scripts (30-ari.sh, 60-database.sh) write their
+# in ./system.json; system/ scripts (04-config-ari.sh, 08-database.sh) write their
 # secrets into config.yaml for you during `make install`.
 # ------------------------------------------------------------------
 
@@ -41,11 +41,11 @@ builder:
   session_secret: ""          # HMAC key for the session cookie, generated on first run
 
 ari:
-  # Built by system/ steps/30-ari.sh into system.json and config.yaml;
+  # Built by system/ steps/04-config-ari.sh into system.json and config.yaml;
   # these are the fallback defaults for a fresh local run.
   base_url: http://127.0.0.1:8088
   username: openivr
-  password: ""                # written by 30-ari.sh (secret - never commit)
+  password: ""                # written by 04-config-ari.sh (secret - never commit)
   # Reconnect backoff (seconds), doubles up to max
   reconnect_initial: 2
   reconnect_max: 60
@@ -115,14 +115,14 @@ cdr:
   # removed - use Asterisk cdr.conf for call logs.
   backend: csv              # csv | none
   csv_file: data/logs/cdr.csv
-  # postgres section retained for 60-database.sh schema provisioning only.
+  # postgres section retained for 08-database.sh schema provisioning only.
   # openivr no longer writes CDRs to Postgres.
   postgres:
     host: 127.0.0.1
     port: 5432
     dbname: ivrdb
     user: ivr
-    password: ""              # written by 60-database.sh (secret - never commit)
+    password: ""              # written by 08-database.sh (secret - never commit)
 
 smtp:
   enabled: false            # set true once data/smtp.json exists (builder)

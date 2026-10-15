@@ -113,7 +113,7 @@ deploy_requires_root_message() {
 The unprivileged deploy path needs write access to ${ASTERISK_ETC}.
 
 Fix it once with:
-    sudo ./system/install.sh --steps 05-requirements.sh   # creates the dirs
+    sudo ./system/install.sh --steps 03-asterisk.sh       # installs and configures dirs
     sudo ./system/install.sh --grant-permissions          # one-time chown/chmod
 
 Then make sure you are in the asterisk group:

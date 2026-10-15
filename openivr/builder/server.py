@@ -1266,14 +1266,21 @@ def create_app(root: str | Path | None = None) -> FastAPI:
         form = await request.form()
         name = Path(str(form.get("name") or "")).name
         cfg = load_config(root_path)
+        wants_json = "application/json" in request.headers.get("accept", "")
         if not name:
+            if wants_json:
+                return JSONResponse({"ok": False, "error": "missing name"}, status_code=400)
             return RedirectResponse("/dialplan", status_code=303)
 
         for candidate in (cfg.sounds_dir / name, cfg.sounds_dir / f"{name}.wav"):
             if candidate.is_file():
                 candidate.unlink()
                 log.info("Builder deleted prompt %s", candidate.name)
+                if wants_json:
+                    return JSONResponse({"ok": True, "deleted": candidate.name})
                 return RedirectResponse(f"/dialplan?ok=Deleted+{candidate.name}", status_code=303)
+        if wants_json:
+            return JSONResponse({"ok": False, "error": "File not found"}, status_code=404)
         return RedirectResponse("/dialplan?err=File+not+found", status_code=303)
 
     # ------------------------------------------------------------- API routes

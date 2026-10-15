@@ -239,7 +239,7 @@ def _port_checks(cfg: Config) -> list[Check]:
 def cmd_config(args: argparse.Namespace) -> int:
     """config show|path|bootstrap|get|set - the YAML-aware config.yaml editor.
 
-    The installer uses ``config set`` (30-ari.sh, 60-database.sh) so secrets
+    The installer uses ``config set`` (04-config-ari.sh, 08-database.sh) so secrets
     land in config.yaml without hand-editing YAML or losing comments.
     """
     from .config import (

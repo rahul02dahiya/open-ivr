@@ -63,7 +63,7 @@ convert:       ## Convert one audio file: make convert FILE=x.mp3 [STEM=name]
 # -------------------------------------------------------------------- service
 
 service-start: ## Install, enable and start the openivr systemd service (sudo)
-	@sudo bash system/steps/95-systemd.sh
+	@sudo bash system/steps/12-systemd.sh
 
 service-stop:  ## Stop the openivr service
 	@sudo systemctl stop openivr

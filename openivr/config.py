@@ -358,8 +358,8 @@ def _block_for(lines: list[str], path: list[str]) -> tuple[int, int, int] | None
 def set_config_value(root: str | os.PathLike[str], key: str, value: Any) -> Path:
     """Write a single ``section.key`` value into ``config.yaml``, keeping comments.
 
-    Used by ``system/steps/30-ari.sh`` (ARI password) and
-    ``60-database.sh`` (database password) instead of sed-ing the file.
+    Used by ``system/steps/04-config-ari.sh`` (ARI password) and
+    ``08-database.sh`` (database password) instead of sed-ing the file.
     """
     parts = [p for p in key.split(".") if p]
     if not parts:
@@ -624,4 +624,4 @@ def _validate(cfg: Config) -> None:
         raise ConfigError("ivr.max_menu_depth must be >= 1")
     if cfg.smtp.enabled and not cfg.smtp.host:
         raise ConfigError("smtp.enabled is true but smtp.host is empty")
-    # cdr.postgres retained for schema provisioning (60-database.sh) but not used by openivr
+    # cdr.postgres retained for schema provisioning (08-database.sh) but not used by openivr

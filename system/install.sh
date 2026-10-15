@@ -6,7 +6,7 @@
 #
 #   sudo ./system/install.sh              # interactive
 #   NONINTERACTIVE=1 sudo ./system/install.sh
-#   STEPS="30-ari.sh" sudo ./system/install.sh   # just one step
+#   STEPS="04-config-ari.sh" sudo ./system/install.sh   # just one step
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/permissions.sh"
 
@@ -16,27 +16,27 @@ usage() {
   cat <<EOF
 usage: sudo ./system/install.sh [options]
 
-  --steps "10-asterisk.sh 30-ari.sh"   run only these steps
-  --from 20-firewall.sh               run from this step to the end
-  --grant-permissions                 only (re)grant the asterisk group
-                                      permissions, then exit
-  --no-interact                       never prompt (use defaults)
-  --reset                             wipe ./system/.state first
+  --steps "03-asterisk.sh 04-config-ari.sh"   run only these steps
+  --from 03-asterisk.sh                      run from this step to the end
+  --grant-permissions                        only (re)grant the asterisk group
+                                             permissions, then exit
+  --no-interact                              never prompt (use defaults)
+  --reset                                    wipe ./system/.state first
   --help
 
 Steps, in order:
-  00-sudo          capture the sudo credential once (no password on disk)
-  05-requirements  OS, tools, python packages, disk, ffmpeg + firewall answers
-  10-asterisk      install Asterisk (packages, or SOURCE_BUILD=1 from source)
-  20-firewall      open SIP/RTP/HTTP/builder ports (skipped if no firewall)
-  30-ari           ari.conf, http.conf, rtp.conf (secrets -> config.yaml)
-  40-trunk         SIP trunk (optional)
-  50-extensions    local extensions + IVR dialplan
-  60-database      PostgreSQL schema reservation (optional)
-  70-recording     recording folders + cron
-  80-smtp          SMTP for voicemail and alerts (secrets -> config.yaml)
-  90-build-deploy  render the builder JSON and deploy it to /etc/asterisk
-  95-systemd       install/enable/start the openivr service
+  01-sudo          capture/verify sudo privileges
+  02-requirements  strict check for OS, tools, python 3.10+, disk (exits if failed)
+  03-asterisk      install Asterisk, start and verify service
+  04-config-ari    set config.yaml in project root, collect local paths & ARI setup
+  05-firewall      open SIP/RTP/HTTP/builder ports (skipped if no firewall)
+  06-trunk         SIP trunk (optional)
+  07-extensions    local extensions + dialplan
+  08-database      PostgreSQL / CDR storage
+  09-recording     recording directories + retention cron
+  10-smtp          SMTP for voicemail and alerts
+  11-build-deploy  render builder configuration into /etc/asterisk
+  12-systemd       install/enable/start the openivr systemd service
 
 Configure anytime afterwards with: make builder   (http://localhost:8090)
 EOF
@@ -78,9 +78,9 @@ fi
 if [ -n "${STEPS_OVERRIDE}" ]; then
   read -r -a STEP_LIST <<< "${STEPS_OVERRIDE}"
 elif [ -n "${FROM}" ]; then
-  read -r -a STEP_LIST <<< "$(cd "${SYSTEM_DIR}/steps" && ls *.sh | sort | awk -v f="${FROM}" '$0 >= f')"
+  mapfile -t STEP_LIST < <(cd "${SYSTEM_DIR}/steps" && ls [0-9][0-9]*.sh | sort | awk -v f="${FROM}" '$0 >= f')
 else
-  read -r -a STEP_LIST <<< "$(cd "${SYSTEM_DIR}/steps" && ls *.sh | sort)"
+  mapfile -t STEP_LIST < <(cd "${SYSTEM_DIR}/steps" && ls [0-9][0-9]*.sh | sort)
 fi
 
 STARTED_AT="$(date -Is)"
