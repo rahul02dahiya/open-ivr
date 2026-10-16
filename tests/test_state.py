@@ -16,9 +16,9 @@ from zoneinfo import ZoneInfo
 import anyio
 import pytest
 
-from openivr.context import build_context
-from openivr.flow import Flow
-from openivr.state import IVRState, in_business_hours
+from openivr.ari.context import build_context
+from openivr.ari.flow import Flow
+from openivr.ari.state import IVRState, _caller_of, in_business_hours
 
 pytestmark = pytest.mark.anyio
 
@@ -520,8 +520,6 @@ async def test_call_task_crash_still_writes_cdr(cfg) -> None:
 
 
 def test_caller_fallbacks() -> None:
-    from openivr.state import _caller_of
-
     class Chan:
         json = {}
 

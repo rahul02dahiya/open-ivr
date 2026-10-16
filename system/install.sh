@@ -6,8 +6,9 @@
 #
 #   sudo ./system/install.sh              # interactive
 #   NONINTERACTIVE=1 sudo ./system/install.sh
-#   STEPS="30-ari.sh" sudo ./system/install.sh   # just one step
+#   STEPS="04-config-ari.sh" sudo ./system/install.sh   # just one step
 . "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/permissions.sh"
 
 MODE="${1:-install}"
 
@@ -15,31 +16,40 @@ usage() {
   cat <<EOF
 usage: sudo ./system/install.sh [options]
 
-  --steps "10-asterisk.sh 30-ari.sh"   run only these steps
-  --from 20-firewall.sh               run from this step to the end
-  --no-interact                       never prompt (use defaults)
-  --reset                             wipe ./system/.state first
+  --steps "03-asterisk.sh 04-config-ari.sh"   run only these steps
+  --from 03-asterisk.sh                      run from this step to the end
+  --grant-permissions                        only (re)grant the asterisk group
+                                             permissions, then exit
+  --no-interact                              never prompt (use defaults)
+  --reset                                    wipe ./system/.state first
   --help
 
 Steps, in order:
-  00-preflight  OS, tools, directories
-  10-asterisk   install Asterisk (packages, or SOURCE_BUILD=1 from source)
-  20-firewall   open SIP/RTP/HTTP ports
-  30-ari        ari.conf, http.conf, rtp.conf, modules
-  40-trunk      SIP trunk (optional)
-  50-extensions local extensions + IVR dialplan
-  60-database   PostgreSQL CDR backend (optional)
-  70-recording  recording folders + cron
-  80-smtp       SMTP for voicemail and alerts
+  01-sudo          capture/verify sudo privileges
+  02-requirements  strict check for OS, tools, python 3.10+, disk (exits if failed)
+  03-asterisk      install Asterisk, start and verify service
+  04-config-ari    set config.yaml in project root, collect local paths & ARI setup
+  05-firewall      open SIP/RTP/HTTP/builder ports (skipped if no firewall)
+  06-trunk         SIP trunk (optional)
+  07-extensions    local extensions + dialplan
+  08-database      PostgreSQL / CDR storage
+  09-recording     recording directories + retention cron
+  10-smtp          SMTP for voicemail and alerts
+  11-build-deploy  render builder configuration into /etc/asterisk
+  12-systemd       install/enable/start the openivr systemd service
+
+Configure anytime afterwards with: make builder   (http://localhost:8090)
 EOF
 }
 
 STEPS_OVERRIDE=""
 FROM=""
+GRANT_ONLY=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --steps) STEPS_OVERRIDE="$2"; shift 2 ;;
     --from) FROM="$2"; shift 2 ;;
+    --grant-permissions) GRANT_ONLY=1; shift ;;
     --no-interact) export NONINTERACTIVE=1; shift ;;
     --reset) rm -rf "${STATE_DIR}"; shift ;;
     --help|-h) usage; exit 0 ;;
@@ -55,13 +65,22 @@ printf '\n%s\n' "${C_BOLD}openivr system installer${C_RESET}"
 info "root    : ${OPENIVR_ROOT}"
 info "state   : ${STATE_DIR}"
 info "asterisk: ${ASTERISK_ETC}"
+info "python  : ${OPENIVR_PYTHON}"
+
+if [ -n "${GRANT_ONLY}" ]; then
+  step "Granting asterisk group permissions"
+  grant_asterisk_dirs
+  ensure_operator_in_group "${SUDO_USER:-${USER:-root}}"
+  ok "done - the builder can now deploy without sudo"
+  exit 0
+fi
 
 if [ -n "${STEPS_OVERRIDE}" ]; then
   read -r -a STEP_LIST <<< "${STEPS_OVERRIDE}"
 elif [ -n "${FROM}" ]; then
-  read -r -a STEP_LIST <<< "$(cd "${SYSTEM_DIR}/steps" && ls *.sh | sort | awk -v f="${FROM}" '$0 >= f')"
+  mapfile -t STEP_LIST < <(cd "${SYSTEM_DIR}/steps" && ls [0-9][0-9]*.sh | sort | awk -v f="${FROM}" '$0 >= f')
 else
-  read -r -a STEP_LIST <<< "$(cd "${SYSTEM_DIR}/steps" && ls *.sh | sort)"
+  mapfile -t STEP_LIST < <(cd "${SYSTEM_DIR}/steps" && ls [0-9][0-9]*.sh | sort)
 fi
 
 STARTED_AT="$(date -Is)"
@@ -75,6 +94,13 @@ for step_file in "${STEP_LIST[@]}"; do
     FAILED+=("${step_file}")
   fi
 done
+
+# One-time filesystem grants so `make deploy` / the builder never need sudo.
+if [ "$(id -u)" -eq 0 ]; then
+  step "Filesystem permissions for the unprivileged deploy path"
+  grant_asterisk_dirs
+  ensure_operator_in_group "${SUDO_USER:-${USER:-root}}"
+fi
 
 step "Writing system.json"
 
@@ -107,6 +133,13 @@ else
 fi
 chown -R "${OPENIVR_OWNER}" "${STATE_DIR}" 2>/dev/null || true
 
+# config.yaml holds the same secrets and is the source of truth at runtime.
+if [ -f "${OPENIVR_ROOT}/config.yaml" ]; then
+  chown "${OPENIVR_OWNER}" "${OPENIVR_ROOT}/config.yaml" 2>/dev/null || true
+  chmod 0600 "${OPENIVR_ROOT}/config.yaml"
+  info "config.yaml is ${OPENIVR_OWNER} 0600"
+fi
+
 ok "system.json written to ${OPENIVR_ROOT}/system.json"
 
 step "Summary"
@@ -136,4 +169,12 @@ if [ ${#FAILED[@]} -gt 0 ]; then
   exit 1
 fi
 
-printf '\n%s\n\n' "${C_GREEN}System module done.${C_RESET} Next: ./run_ivr.sh (builder -> verify -> systemd)"
+cat <<EOF
+
+${C_GREEN}System module done.${C_RESET}
+
+  1. configure the PBX:   make builder        (http://localhost:8090)
+  2. deploy after saving: make deploy
+  3. run the IVR:         make service-start
+  4. check it:            make status
+EOF
